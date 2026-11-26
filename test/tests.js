@@ -27501,6 +27501,26 @@ testFail("function x() { '\\12'; 'use strict'; }", "Octal literal in strict mode
 testFail("(function () { 'use strict'; with (i); }())",
          "'with' in strict mode (1:29)");
 
+// `++` and `--` are postfix restricted productions, so after a line break they
+// start a new statement and the string literal stays a directive.
+testFail("\"use strict\"\n++x\n010", "Invalid number (3:0)", {ecmaVersion: 6});
+
+testFail("\"use strict\"\n--x\n010", "Invalid number (3:0)", {ecmaVersion: 6});
+
+testFail("\"use strict\" /*\n*/ ++x\n010", "Invalid number (3:0)", {ecmaVersion: 6});
+
+testFail("function f() {\"use strict\"\n++x\nwith (y) {}}",
+         "'with' in strict mode (3:0)", {ecmaVersion: 6});
+
+// An escaped identifier is not the `in` operator.
+testFail("\"use strict\"\nin\\u0078\n010", "Invalid number (3:0)", {ecmaVersion: 6});
+
+// A single `+` continues the expression, so there is no directive.
+testAssert("\"use strict\"\n+x\n010", function(ast) {
+  if (ast.body.length !== 2) return "Unexpected statement count: " + ast.body.length;
+  if (ast.body[0].directive !== undefined) return "Unexpected directive";
+}, {ecmaVersion: 6});
+
 testFail("function hello() {'use strict'; ({ i: 42, i: 42 }) }",
          "Redefinition of property (1:42)");
 

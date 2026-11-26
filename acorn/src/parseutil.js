@@ -20,11 +20,17 @@ pp.strictDirective = function(start) {
     if ((match[1] || match[2]) === "use strict") {
       skip.lastIndex = start + match[0].length
       let spaceAfter = skip.exec(this.input), end = spaceAfter.index + spaceAfter[0].length
-      let next = this.input.charAt(end)
+      let next = this.input.charAt(end), after = this.input.charAt(end + 1)
+      // A line break ends the statement unless the next token continues the
+      // expression. `++` and `--` are postfix restricted productions, so
+      // after a line break they start a new statement and do not continue
+      // the string literal.
       return next === ";" || next === "}" ||
         (lineBreak.test(spaceAfter[0]) &&
-         !(/[(`.[+\-/*%<>=,?^&]/.test(next) ||
-           next === "!" && this.input.charAt(end + 1) === "=" ||
+         !(/[(`.[/*%<>=,?^&]/.test(next) ||
+           next === "+" && after !== "+" ||
+           next === "-" && after !== "-" ||
+           next === "!" && after === "=" ||
            next === "i" && keywordOpAt(this, end)))
     }
     start += match[0].length
@@ -43,6 +49,9 @@ function keywordOpAt(parser, pos) {
   let end = pos + 1, stop = Math.min(parser.input.length, pos + 11)
   while (end < stop) {
     let ch = parser.fullCharCodeAt(end)
+    // A Unicode escape makes the word an ordinary identifier. Keywords must
+    // be written literally, so this is not an operator.
+    if (ch === 92) return false
     if (!isIdentifierChar(ch, true)) break
     end += ch <= 0xffff ? 1 : 2
   }
